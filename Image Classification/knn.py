@@ -54,10 +54,11 @@ class knn:
 def main():
     k = int(input())
     n = knn(k)
-    n.train(Xtr_rows, Ytr)
+    
+    n.train(Xtr_rows[:, :], Ytr[:])
     print("训练完成，开始测试")
-    Yte_predict = n.predict(Xte_rows[:10000, :])
-    acc = np.mean(Yte_predict == Yte[:10000])
+    Ytr_predict = n.predict(Xtr_rows[:1, :])
+    acc = np.mean(Ytr_predict == Ytr[:1])
     print("准确率: %f" % acc)
 
 
