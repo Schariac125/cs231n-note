@@ -83,6 +83,7 @@ def softmax_loss_vectorized(W, X, y, reg):
     # Implement a vectorized version of the softmax loss, storing the           #
     # result in loss.                                                           #
     #############################################################################
+    #这个操作是在做归一化
     num_train = X.shape[0]
     scores = X.dot(W)
     scores -= np.max(scores, axis=1)[:,None]
