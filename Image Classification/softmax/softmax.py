@@ -44,14 +44,6 @@ def softmax_loss_naive(W, X, y, reg):
     # normalized hinge loss plus regularization
     loss = loss / num_train + reg * np.sum(W * W)
 
-    #############################################################################
-    # TODO:                                                                     #
-    # Compute the gradient of the loss function and store it dW.                #
-    # Rather that first computing the loss and then computing the derivative,   #
-    # it may be simpler to compute the derivative at the same time that the     #
-    # loss is being computed. As a result you may need to modify some of the    #
-    # code above to compute the gradient.                                       #
-    #############################################################################
     num_train=X.shape[0]
     score=X.dot(W)
     score-=np.max(score,axis=1)[:,None]
@@ -78,11 +70,6 @@ def softmax_loss_vectorized(W, X, y, reg):
     dW = np.zeros_like(W)
 
 
-    #############################################################################
-    # TODO:                                                                     #
-    # Implement a vectorized version of the softmax loss, storing the           #
-    # result in loss.                                                           #
-    #############################################################################
     #这个操作是在做归一化
     num_train = X.shape[0]
     scores = X.dot(W)
@@ -91,15 +78,7 @@ def softmax_loss_vectorized(W, X, y, reg):
     p/=p.sum(axis=1)[:,None]
     logp=np.log(p)
     loss=-np.sum(logp[np.arange(num_train),y])/num_train+reg*np.sum(W*W)
-    #############################################################################
-    # TODO:                                                                     #
-    # Implement a vectorized version of the gradient for the softmax            #
-    # loss, storing the result in dW.                                           #
-    #                                                                           #
-    # Hint: Instead of computing the gradient from scratch, it may be easier    #
-    # to reuse some of the intermediate values that you used to compute the     #
-    # loss.                                                                     #
-    #############################################################################
+    
     dscores=p
     dscores[np.arange(num_train),y]-=1
     dW=X.T.dot(dscores)/num_train+2*reg*W
