@@ -81,6 +81,7 @@ class TwoLayerNet(object):
         b1=self.params["b1"]
         W2=self.params["W2"]
         b2=self.params["b2"]
+        X = X.reshape(X.shape[0], -1)
         hidden_layer=np.maximum(0,X.dot(W1)+b1)
         scores=hidden_layer.dot(W2)+b2
         ############################################################################
