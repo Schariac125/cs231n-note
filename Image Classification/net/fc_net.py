@@ -76,14 +76,17 @@ class TwoLayerNet(object):
         ##############################################################################
         # 代办: 实现两层网络的前向传播，计算 X 的类别分数，并将它们存储在 scores 变量中。#
         ##############################################################################
-        N=X.shape[0]
-        W1=self.params["W1"]
-        b1=self.params["b1"]
-        W2=self.params["W2"]
-        b2=self.params["b2"]
+        N = X.shape[0]
+        # W1的维度是(input_dim,hidden_dim)，W2的维度是(hidden_dim,num_classes)
+        # b1的维度是(hidden_dim,)，b2的维度是(num_classes,)
+        # X的维度是(N,input_dim)，hidden的维度是(N,hidden_dim)，scores的维度是(N,num_classes)
+        W1 = self.params["W1"]
+        W2 = self.params["W2"]
+        b1 = self.params["b1"]
+        b2 = self.params["b2"]
         X = X.reshape(X.shape[0], -1)
-        hidden_layer=np.maximum(0,X.dot(W1)+b1)
-        scores=hidden_layer.dot(W2)+b2
+        hidden = X.dot(W1) + b1
+        scores = np.maximum(0, hidden).dot(W2) + b2
         ############################################################################
         #                             你的代码结束                               #
         ############################################################################
@@ -101,24 +104,36 @@ class TwoLayerNet(object):
         # 注意：为了确保你的实现与我们的匹配，并且你通过了自动化测试，确保你的 L2 正则化     #
         # 包含一个 0.5 的因子，以简化梯度表达式。                                         #
         #################################################################################
-        # 计算损失
-        shifted_scores = scores - np.max(scores, axis=1, keepdims=True)  # 数值稳定性
-        p = np.exp(shifted_scores)
-        p /= np.sum(p, axis=1, keepdims=True)  # 归一化
-        loss = -np.sum(np.log(p[np.arange(N), y])) / N
-        loss += 0.5 * self.reg * (np.sum(W1 * W1) + np.sum(W2 * W2))  # 添加正则化项
+        # 归一化
+        # loss是一个标量
+        shift_score = scores - np.max(scores, axis=1)[:, None]
+        p = np.exp(shift_score)
+        p /= np.sum(p, axis=1)[:, None]
+        logp = np.log(p)
+        loss = -np.sum(logp[np.arange(N), y]) / N
+        loss += 0.5 * self.reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
 
-        dscores = p.copy()
-        dscores[np.arange(N), y] -= 1
+        dscore = p.copy()
+        dscore[np.arange(N), y] -= 1
 
-        grads["W2"] = hidden_layer.T.dot(dscores)
+        # 到底是几维的啊
+        # W1的维度是(input_dim,hidden_dim)，W2的维度是(hidden_dim,num_classes)
+        # b1的维度是(hidden_dim,)，b2的维度是(num_classes,)
+        # X的维度是(N,input_dim)，hidden的维度是(N,hidden_dim)，scores的维度是(N,num_classes)
+        # dscore的维度是(N,num_classes)，dhidden的维度是(N,hidden_dim)，dX的维度是(N,input_dim)
+        # score=hidden_layer.dot(W2)+b2
+        # hidden_layer=np.maximum(0,hidden)
+        # hidden=X.dot(W1)+b1
+        # hidden_layer=np.maximum(0,X.dot(W1)+b1)
+        hidden_layer = np.maximum(0, hidden)
+        grads["W2"] = hidden_layer.T.dot(dscore)
         grads["W2"] /= N
-        grads["W2"] += self.reg * W2  # 添加正则化梯度
-        grads["b2"] = np.sum(dscores, axis=0) / N
-        grads["W1"] = X.T.dot(np.dot(dscores, W2.T) * (hidden_layer > 0))
+        grads["W2"] += self.reg * W2
+        grads["b2"] = np.sum(dscore, axis=0) / N
+        grads["W1"] = X.T.dot(np.dot(dscore, W2.T) * (hidden_layer > 0))
         grads["W1"] /= N
-        grads["W1"] += self.reg * W1  # 添加正则化梯度
-        grads["b1"] = np.sum(np.dot(dscores, W2.T) * (hidden_layer > 0), axis=0) / N
+        grads["W1"] += self.reg * W1
+        grads["b1"] = np.sum(np.dot(dscore, W2.T) * (hidden_layer > 0), axis=0) / N
         ############################################################################
         #                             你的代码结束                                  #
         ############################################################################
@@ -133,7 +148,7 @@ class TwoLayerNet(object):
         params = self.params
         np.save(fpath, params)
         print(fname, "已保存。")
-    
+
     def load(self, fname):
         """
         加载模型参数。
@@ -147,7 +162,6 @@ class TwoLayerNet(object):
             self.params = params
             print(fname, "已加载。")
             return True
-
 
 
 class FullyConnectedNet(object):
@@ -196,6 +210,7 @@ class FullyConnectedNet(object):
         self.normalization = normalization
         self.use_dropout = dropout_keep_ratio != 1
         self.reg = reg
+        # 这个是总层数
         self.num_layers = 1 + len(hidden_dims)
         self.dtype = dtype
         self.params = {}
@@ -209,16 +224,24 @@ class FullyConnectedNet(object):
         # 层存储在 gamma2 和 beta2 中，依此类推。比例参数应初始化为一，偏移参数应初始化  #
         # 为零。                                                                     #
         ##############################################################################
-        self.params["W1"] = weight_scale * np.random.randn(input_dim, hidden_dims[0])
-        self.params["b1"] = np.zeros(hidden_dims[0])
-        if self.normalization == "batchnorm" or self.normalization == "layernorm":
-            for i in range(1, self.num_layers - 1):
-                self.params["W%d" % (i + 1)] = weight_scale * np.random.randn(hidden_dims[i - 1], hidden_dims[i])
-                self.params["b%d" % (i + 1)] = np.zeros(hidden_dims[i])
-                if self.normalization == "batchnorm":
-                    self.params["gamma%d" % (i + 1)] = np.ones(hidden_dims[i])
-                    self.params["beta%d" % (i + 1)] = np.zeros(hidden_dims[i])
-            self.params["b%d" % (i + 1)] = np.zeros(hidden_dims[i])
+        for i in range(1, self.num_layers + 1):
+            w = f"W{i}"
+            b = f"b{i}"
+            if i == 1:
+                self.params[w] = weight_scale * np.random.randn(
+                    input_dim, hidden_dims[i - 1]
+                )
+                self.params[b] = np.zeros(hidden_dims[i - 1])
+            elif i == self.num_layers:
+                self.params[w] = weight_scale * np.random.randn(
+                    hidden_dims[i - 2], num_classes
+                )
+                self.params[b] = np.zeros(num_classes)
+            else:
+                self.params[w] = weight_scale * np.random.randn(
+                    hidden_dims[i - 2], hidden_dims[i - 1]
+                )
+                self.params[b] = np.zeros(hidden_dims[i - 1])
         ############################################################################
         #                             你的代码结束                                  #
         ############################################################################
@@ -248,7 +271,7 @@ class FullyConnectedNet(object):
     def loss(self, X, y=None):
         """
         计算全连接网络的损失和梯度。
-        
+
         输入：
         - X: 输入数据的数组，形状为 (N, d_1, ..., d_k)
         - y: 标签数组，形状为 (N,)。y[i] 给出 X[i] 的标签。
@@ -276,11 +299,26 @@ class FullyConnectedNet(object):
         # 代办: 实现全连接网络的前向传播，计算 X 的类别分数，并将它们存储在 scores 变量中。#
         #                                                                              #
         # 当使用 Dropout 时，你需要将 self.dropout_param 传递给每个 Dropout 前向传播。    #
-        #                                                                              # 
+        #                                                                              #
         # 当使用批量归一化时，你需要将 self.bn_params[0] 传递给第一个批量归一化层的前向    #
         # 传播，self.bn_params[1] 传递给第二个批量归一化层的前向传播，依此类推。          #
         ###############################################################################
+        current_input = X.reshape(X.shape[0], -1)
+        caches = {}
+        for i in range(1, self.num_layers):
+            w = self.params[f"W{i}"]
+            b = self.params[f"b{i}"]
+            out, fc_cache = affine_forward(current_input, w, b)
+            out, current_cache = relu_forward(out)
+            caches[i] = (fc_cache, current_cache)
+            current_input = out
 
+        w_last, b_last = (
+            self.params[f"W{self.num_layers}"],
+            self.params[f"b{self.num_layers}"],
+        )
+        scores, final_cache = affine_forward(current_input, w_last, b_last)
+        caches[self.num_layers] = final_cache
         ############################################################################
         #                             你的代码结束                                  #
         ############################################################################
@@ -300,13 +338,32 @@ class FullyConnectedNet(object):
         # 注意：为了确保你的实现与我们的匹配，并且你通过了自动化测试，确保你的 L2 正则化     #
         # 包含一个 0.5 的因子，以简化梯度表达式。                                         #
         #################################################################################
+        loss,dscores=softmax_loss(scores,y)
+        reg=self.reg
+        for i in range(1, self.num_layers + 1):
+            w=self.params[f"W{i}"]
+            loss+=0.5*reg*np.sum(w*w)
 
+        dout=dscores
+        for i in reversed(range(1,self.num_layers+1)):
+            cache=caches[i]
+            if i==self.num_layers:
+                dx,dw,db=affine_backward(dout,cache)
+            else:
+                fc_cache,current_cache=cache
+                dout=relu_backward(dout,current_cache)
+                dx,dw,db=affine_backward(dout,fc_cache)
+            
+            dw+=reg*self.params[f"W{i}"]
+            grads[f"W{i}"]=dw
+            grads[f"b{i}"]=db
+
+            dout=dx
         ############################################################################
         #                             你的代码结束                                  #
         ############################################################################
 
         return loss, grads
-
 
     def save(self, fname):
         """
@@ -316,7 +373,7 @@ class FullyConnectedNet(object):
         params = self.params
         np.save(fpath, params)
         print(fname, "已保存。")
-    
+
     def load(self, fname):
         """
         加载模型参数。
@@ -330,22 +387,3 @@ class FullyConnectedNet(object):
             self.params = params
             print(fname, "已加载。")
             return True
-        
-
-
-
-
-
-      
-
-    
-        
-        
-        
-       
-        
-        
-        
-        
-        
-        
