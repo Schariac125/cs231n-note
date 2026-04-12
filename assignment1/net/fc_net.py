@@ -47,9 +47,9 @@ class TwoLayerNet(object):
         # 字典中，第一层权重和偏置使用键 'W1' 和 'b1'，第二层权重和偏置使用键 'W2' 和    #
         # 'b2'。                                                                      #
         ###############################################################################
-        self.params["W1"] = weight_scale * np.random.randn(input_dim, hidden_dim)
+        self.params["W1"] = weight_scale * np.random.randn(input_dim, hidden_dim)*np.sqrt(2/input_dim)
         self.params["b1"] = np.zeros(hidden_dim)
-        self.params["W2"] = weight_scale * np.random.randn(hidden_dim, num_classes)
+        self.params["W2"] = weight_scale * np.random.randn(hidden_dim, num_classes)*np.sqrt(2/hidden_dim)
         self.params["b2"] = np.zeros(num_classes)
         ############################################################################
         #                             你的代码结束                                  #
@@ -230,17 +230,17 @@ class FullyConnectedNet(object):
             if i == 1:
                 self.params[w] = weight_scale * np.random.randn(
                     input_dim, hidden_dims[i - 1]
-                )
+                )*np.sqrt(2/input_dim)
                 self.params[b] = np.zeros(hidden_dims[i - 1])
             elif i == self.num_layers:
                 self.params[w] = weight_scale * np.random.randn(
                     hidden_dims[i - 2], num_classes
-                )
+                )*np.sqrt(2/hidden_dims[i - 2])
                 self.params[b] = np.zeros(num_classes)
             else:
                 self.params[w] = weight_scale * np.random.randn(
                     hidden_dims[i - 2], hidden_dims[i - 1]
-                )
+                )*np.sqrt(2/hidden_dims[i - 2])
                 self.params[b] = np.zeros(hidden_dims[i - 1])
         ############################################################################
         #                             你的代码结束                                  #
