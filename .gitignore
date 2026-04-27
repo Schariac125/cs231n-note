@@ -6,3 +6,4 @@ get_datasets.sh
 imagenet_val_25.npz
 pyproject.toml
 uv.lock
+.DS_Store
